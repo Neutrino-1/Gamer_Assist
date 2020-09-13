@@ -31,7 +31,9 @@ class InteractiveScreenshot(tk.Frame):
         #Translate mouse screen x0,y0 coordinates to canvas coordinates
         self.rectx0 = self.canvas.canvasx(event.x)
         self.recty0 = self.canvas.canvasy(event.y) 
+        self.canvas.delete("all")
         #Create rectangle
+
         self.rectid = self.canvas.create_rectangle(
             self.rectx0, self.recty0, self.rectx0, self.recty0, fill="#4eccde")
         print('Rectangle {0} started at {1} {2} {3} {4} '.
