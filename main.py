@@ -11,6 +11,9 @@ import pyautogui
 
 class InteractiveScreenshot(tk.Frame):
     def __init__( self, parent):
+        parent.geometry("{0}x{1}+0+0".format(root.winfo_screenwidth(), root.winfo_screenheight()))
+        parent.attributes('-alpha', 0.3)
+        parent.attributes("-fullscreen", True)
         tk.Frame.__init__(self, parent)
         self.bind("<F11>", self.toggle_fullscreen)
         self.bind("<Escape>", self.end_fullscreen)
@@ -45,10 +48,10 @@ class InteractiveScreenshot(tk.Frame):
 
 
     def selectionDone(self):
-        print('started at x = {1} y = {2} ended at x1 = {3} y1 = {4} '. format(self.rectid, self.rectx0, self.recty0, self.rectx1,
-                     self.recty1))
-        '''Getting the Image from the screen and find the edge of the health bar'''
-        print(pyautogui.position())
+        # print('started at x = {1} y = {2} ended at x1 = {3} y1 = {4} '. format(self.rectid, self.rectx0, self.recty0, self.rectx1,
+        #              self.recty1))
+        # '''Getting the Image from the screen and find the edge of the health bar'''
+        # print(pyautogui.position())
 	    #Grabbing the image from screen using pillow library
 	    #converting the image to numpy array to use the image with cv2 library
         screen = np.array(ImageGrab.grab(bbox = (self.rectx0-0.5,self.recty0+26,self.rectx1,self.recty1+26.5)))
@@ -61,12 +64,15 @@ class InteractiveScreenshot(tk.Frame):
     	#displaying the edge and thresh image
         cv2.imshow('Original',cvt_image)
 
+    def exitScreenshot(self):
+        self.parent.destroy()
+
     def _createCanvas(self):
         self.canvas = tk.Canvas(self.parent, width = root.winfo_screenwidth(), height = root.winfo_screenheight(),
                                 bg = None)
         #self.canvas.grid(row=0, column=0)
-        self.mainScreenButton = tk.Button(root, text="Main Menu", width=10, command=self.quit(),bg='#00ffea',fg='black')
-        self.screenshotButton = tk.Button(root, text="Grab", width=10, command=self.openNewWindow,bg='#00ff08',fg='black')
+        self.mainScreenButton = tk.Button(self.parent, text="Exit", width=10, command=self.exitScreenshot,bg='#ff0000',fg='black')
+        self.screenshotButton = tk.Button(self.parent, text="Grab", width=10, command=self.selectionDone,bg='#00ff00',fg='black')
         #self.button.grid(padx = 50,pady=50,row=2, column=1)
         self.screenshotButton.grid(padx = 5,row=0, column=1, sticky='E')
         self.mainScreenButton.grid(padx = 5,row=0, column=0, sticky= 'W')
@@ -97,7 +103,7 @@ class InteractiveScreenshot(tk.Frame):
         #Modify rectangle x1, y1 coordinates
         self.canvas.coords(self.rectid, self.rectx0, self.recty0,
                       self.rectx1, self.recty1)
-        print('Rectangle x1, y1 = ', self.rectx1, self.recty1)
+        # print('Rectangle x1, y1 = ', self.rectx1, self.recty1)
 
     def stopRect(self, event):
         #Translate mouse screen x1,y1 coordinates to canvas coordinates
@@ -106,8 +112,8 @@ class InteractiveScreenshot(tk.Frame):
         #Modify rectangle x1, y1 coordinates
         self.canvas.coords(self.rectid, self.rectx0, self.recty0,
                       self.rectx1, self.recty1)
-        print('Rectangle ended')
-        print(pyautogui.position())
+        # print('Rectangle ended')
+        # print(pyautogui.position())
 
     def toggle_fullscreen(self, event=None):
         self.state = not self.state  # Just toggling the boolean
@@ -124,10 +130,10 @@ def  Image_processing():
 
 def serial_ports():
     ports = serial.tools.list_ports.comports()
-    print('Serial searching')
+    # print('Serial searching')
     result = []
     for port, desc, hwid in sorted(ports):
-        print("{}: {} [{}]".format(port, desc, hwid))
+        # print("{}: {} [{}]".format(port, desc, hwid))
         result.append(desc)
     return result
 
@@ -138,16 +144,15 @@ def refreshPorts():
     com['values'] = comList
     com.current(0)
 
+def newScreenArea():
+    screenshotWindow = tk.Toplevel(root)
+    app = InteractiveScreenshot(screenshotWindow)
 
 if __name__ == "__main__":
 
     baduRate = ["9600","115200","19200"]
 
     root = tk.Tk()
-    #root.geometry("{0}x{1}+0+0".format(root.winfo_screenwidth(), root.winfo_screenheight()))
-    #root.attributes('-alpha', 0.3)
-    #root.attributes("-fullscreen", True)
-    #app = InteractiveScreenshot(root)
     root.title("Gamer Assist");
     root.geometry("315x175");
 
@@ -156,7 +161,7 @@ if __name__ == "__main__":
     root.config(menu=menu_system)
 
     #creating file menu item
-    file_menu = tk.Menu(menu_system)
+    file_menu = tk.Menu(menu_system,tearoff=False)
     menu_system.add_cascade(label="File",menu=file_menu)
     file_menu.add_command(label="New Config",command=None)
     file_menu.add_command(label="Open Config",command=None)
@@ -165,7 +170,7 @@ if __name__ == "__main__":
     file_menu.add_command(label="Exit",command=root.quit)
 
     #creating help menu item
-    help_menu = tk.Menu(menu_system)
+    help_menu = tk.Menu(menu_system,tearoff=False)
     menu_system.add_cascade(label="Help",menu=help_menu)
     help_menu.add_command(label="Manual",command=None)
     help_menu.add_command(label="About",command=None)
@@ -175,7 +180,7 @@ if __name__ == "__main__":
 
     tk.Button(root, text="Start", width=10, command=None).grid(padx = 5,pady = 5,row=0, column=2)
     tk.Button(root, text="Stop", width=10, command=None).grid(padx = 5,pady = 5, row=1, column=2)
-    tk.Button(root, text="Config file", width=10, command=None).grid(padx = 5,pady = 5, row=2, column=2)
+    tk.Button(root, text="Edit Config", width=10, command=newScreenArea).grid(padx = 5,pady = 5, row=2, column=2)
 
     label = tk.Label(root, text="Badu Rate:").grid(padx = 5,pady = 5, row=3, column=0, sticky='NW')
     
@@ -195,5 +200,6 @@ if __name__ == "__main__":
     com.bind("<<ComboboxSelected>>",None)
 
     tk.Button(root, text="Refresh Port", width=10, command=refreshPorts).grid(padx = 5,pady = 5, row=4, column=2)
+
     root.mainloop()
     
