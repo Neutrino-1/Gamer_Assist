@@ -1,7 +1,9 @@
 import tkinter as tk
 from tkinter import ttk 
+from tkinter import PhotoImage
 import cv2
 from PIL import ImageGrab
+import PIL.Image, PIL.ImageTk
 import numpy as np
 import math
 import serial
@@ -9,8 +11,11 @@ import serial.tools.list_ports
 import time
 import pyautogui
 
+cvt_image = None
+
 class InteractiveScreenshot(tk.Frame):
     def __init__( self, parent):
+        parent.title("Interactive Screenshot");
         parent.geometry("{0}x{1}+0+0".format(root.winfo_screenwidth(), root.winfo_screenheight()))
         parent.attributes('-alpha', 0.3)
         parent.attributes("-fullscreen", True)
@@ -30,24 +35,27 @@ class InteractiveScreenshot(tk.Frame):
         self.recty1 = 0
         self.rectid = None
 
-    def openNewWindow(self): 
-        # Toplevel object which will  
-        # be treated as a new window 
-        self.newWindow = tk.Toplevel() 
-  
-        # sets the title of the 
+    def screenshotEditor(self): 
+        global previewScreenshotImg
+        self.parent.withdraw() 
+        self.parent.destroy()
+        self.selectionDone()
+        self.ScreenshotEditorWm = tk.Toplevel() 
+
         # Toplevel widget 
-        self.newWindow.title("New Window") 
+        self.ScreenshotEditorWm.title("New Window") 
   
         # sets the geometry of toplevel 
-        self.newWindow.geometry("200x200") 
-  
-        # A Label widget to show in toplevel 
-        self.Label(self.newWindow,text ="This is a new window").pack() 
-        self.parent.destroy()
+        self.ScreenshotEditorWm.geometry("200x200") 
+        screenshotPreviewCanv= tk.Canvas(self.ScreenshotEditorWm,height=150,width = 150,bg = "White")
+        screenshotPreviewCanv.grid(padx = 5,row=0,rowspan=3,columnspan=2, column=0,sticky="EW")
+        previewScreenshotImg = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(cvt_image))
+        screenshotPreviewCanv.create_image(0,0, image=previewScreenshotImg,anchor='nw')
+        self.ScreenshotEditorWm.deiconify() 
 
 
     def selectionDone(self):
+        global cvt_image
         # print('started at x = {1} y = {2} ended at x1 = {3} y1 = {4} '. format(self.rectid, self.rectx0, self.recty0, self.rectx1,
         #              self.recty1))
         # '''Getting the Image from the screen and find the edge of the health bar'''
@@ -60,9 +68,9 @@ class InteractiveScreenshot(tk.Frame):
         gray_image = cv2.cvtColor(cvt_image, cv2.COLOR_BGR2GRAY)
 
         #blur the gray image to remove noise and to averaging the color
-        blurred = cv2.bilateralFilter(gray_image,15,65,65)
+        cvt_image = cv2.bilateralFilter(gray_image,15,65,65)
     	#displaying the edge and thresh image
-        cv2.imshow('Original',cvt_image)
+        #cv2.imshow('Original',cvt_image)
 
     def exitScreenshot(self):
         self.parent.destroy()
@@ -72,7 +80,7 @@ class InteractiveScreenshot(tk.Frame):
                                 bg = None)
         #self.canvas.grid(row=0, column=0)
         self.mainScreenButton = tk.Button(self.parent, text="Exit", width=10, command=self.exitScreenshot,bg='#ff0000',fg='black')
-        self.screenshotButton = tk.Button(self.parent, text="Grab", width=10, command=self.selectionDone,bg='#00ff00',fg='black')
+        self.screenshotButton = tk.Button(self.parent, text="Grab", width=10, command=self.screenshotEditor,bg='#00ff00',fg='black')
         #self.button.grid(padx = 50,pady=50,row=2, column=1)
         self.screenshotButton.grid(padx = 5,row=0, column=1, sticky='E')
         self.mainScreenButton.grid(padx = 5,row=0, column=0, sticky= 'W')
@@ -145,6 +153,8 @@ def refreshPorts():
     com.current(0)
 
 def newScreenArea():
+    #pyautogui.getWindowsWithTitle("Gamer Assist")[0].minimize()
+    root.wm_state('iconic')
     screenshotWindow = tk.Toplevel(root)
     app = InteractiveScreenshot(screenshotWindow)
 
@@ -176,7 +186,10 @@ if __name__ == "__main__":
     help_menu.add_command(label="About",command=None)
 
 
-    tk.Canvas(root,height=100,width = 50,bg = "White").grid(padx = 5,row=0,rowspan=3,columnspan=2, column=0,sticky="EW")
+    imageCanvas = tk.Canvas(root,height=100,width = 50,bg = "White")
+    imageCanvas.grid(padx = 5,row=0,rowspan=3,columnspan=2, column=0,sticky="EW")
+    previewScreenshot = PhotoImage(file='images/Health.png')
+    imageCanvas.create_image(50,0, image=previewScreenshot,anchor='nw')
 
     tk.Button(root, text="Start", width=10, command=None).grid(padx = 5,pady = 5,row=0, column=2)
     tk.Button(root, text="Stop", width=10, command=None).grid(padx = 5,pady = 5, row=1, column=2)
