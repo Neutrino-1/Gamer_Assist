@@ -46,13 +46,32 @@ class InteractiveScreenshot(tk.Frame):
         self.ScreenshotEditorWm.title("Editor") 
   
         # sets the geometry of toplevel 
-        self.ScreenshotEditorWm.geometry("200x200") 
-        screenshotPreviewCanv= tk.Canvas(self.ScreenshotEditorWm,height=150,width = 150,bg = "White")
+        self.ScreenshotEditorWm.geometry("300x300") 
+        screenshotPreviewCanv= tk.Canvas(self.ScreenshotEditorWm,height=220,width = 220,bg = "black")
         screenshotPreviewCanv.grid(padx = 5,row=0,rowspan=2,columnspan=2, column=0,sticky="EW")
-        previewScreenshotImg = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(cvt_image))
-        screenshotPreviewCanv.create_image(0,0, image=previewScreenshotImg,anchor='nw')
+        
+
+        screenshotOriginal =  PIL.Image.fromarray(cvt_image)
+        imgWidth,imgHeight = screenshotOriginal.size
+        imageCanvas.update()
+        newHeight = imageCanvas.winfo_height()
+        if imgWidth <= imgHeight:
+            newWidth = int(imageCanvas.winfo_height() / imgHeight * imgWidth) 
+        else:
+            newWidth = imageCanvas.winfo_width()
+            newHeight = int((newWidth/imgWidth)*imgHeight)
+        resized = screenshotOriginal.resize((newWidth,newHeight))
+
+        previewScreenshotImg = PIL.ImageTk.PhotoImage(resized)
+        screenshotPreviewCanv.create_image(((220-newWidth)/2),((220-newHeight)/2), image=previewScreenshotImg,anchor='nw')
         self.ScreenshotEditorWm.deiconify() 
 
+        tresh_horizontal_slider_w = tk.Scale(self.ScreenshotEditorWm,from_=0,to=300,orient = tk.HORIZONTAL)
+        tresh_horizontal_slider_b = tk.Scale(self.ScreenshotEditorWm,from_=0,to=300,orient = tk.HORIZONTAL)
+        blur_horizontal_slider = tk.Scale(self.ScreenshotEditorWm,from_=0,to=300,orient = tk.HORIZONTAL)
+        tresh_horizontal_slider_w.grid(padx = 5,row=0,column=3,sticky="EW")
+        tresh_horizontal_slider_b.grid(padx = 5,row=1,column=3,sticky="EW")
+        blur_horizontal_slider.grid(padx = 5,row=2,column=3,sticky="EW")
 
     def selectionDone(self):
         global cvt_image
@@ -70,7 +89,7 @@ class InteractiveScreenshot(tk.Frame):
         #converting the blurred image to pure black(0) and white(255) binary image
         thresh = cv2.threshold(blurred, 100,200, cv2.THRESH_BINARY)[1]
         print(pytesseract.image_to_string(thresh))
-        cv2.imshow('Original',thresh)
+        #cv2.imshow('Original',thresh)
 
     def exitScreenshot(self):
         self.parent.destroy()
@@ -169,7 +188,7 @@ if __name__ == "__main__":
 
     root = tk.Tk()
     root.title("Gamer Assist");
-    root.geometry("315x175");
+    root.geometry("322x290");
 
     # Adding Menu system
     menu_system = tk.Menu(root)
@@ -191,26 +210,29 @@ if __name__ == "__main__":
     help_menu.add_command(label="About",command=None)
 
 
-    imageCanvas = tk.Canvas(root,height=100,width = 50,bg = "White")
-    imageCanvas.grid(padx = 5,row=0,rowspan=3,columnspan=2, column=0,sticky="EW")
+    imageCanvas = tk.Canvas(root,height=220,width = 220,bg = "black")
+    imageCanvas.grid(padx = 5,row=0,rowspan=3,columnspan=2, column=0,sticky="W")
 
-    previewScreenshot = PhotoImage(file='images/Health.png')
-    imgHeight = previewScreenshot.height()
-    imgWidth = previewScreenshot.width()
+    originalImg = Image.open('images/Health.png')
+
+    imgWidth,imgHeight = originalImg.size
     imageCanvas.update()
-    canvHeight = imageCanvas.winfo_height()
-    canvWidth = imageCanvas.winfo_width()
+    newHeight = imageCanvas.winfo_height()
     
-    scaling = 0    
-    
-    imageCanvas.create_image(0,0, image=previewScreenshot,anchor='nw')
+    if imgWidth <= imgHeight:
+        newWidth = int(imageCanvas.winfo_height() / imgHeight * imgWidth) 
+    else:
+        newWidth = imageCanvas.winfo_width()
+        newHeight = int((newWidth/imgWidth)*imgHeight)
 
-    #print("Hey",pytesseract.image_to_string(PIL.Image.open('images/Health.png')))
+    resized = originalImg.resize((newWidth,newHeight))
+    previewScreenshot = PIL.ImageTk.PhotoImage(resized)
+   
+    imageCanvas.create_image(((220-newWidth)/2),((220-newHeight)/2),image=previewScreenshot,anchor='nw')
 
-
-    tk.Button(root, text="Start", width=10, command=None).grid(padx = 5,pady = 5,row=0, column=2)
-    tk.Button(root, text="Stop", width=10, command=None).grid(padx = 5,pady = 5, row=1, column=2)
-    tk.Button(root, text="Edit Config", width=10, command=newScreenArea).grid(padx = 5,pady = 5, row=2, column=2)
+    tk.Button(root, text="Start", width=10, command=None).grid(padx = 5,pady = 5,row=0, column=2,sticky="NS")
+    tk.Button(root, text="Stop", width=10, command=None).grid(padx = 5,pady = 5, row=1, column=2,sticky="NS")
+    tk.Button(root, text="Edit Config", width=10, command=newScreenArea).grid(padx = 5,pady = 5, row=2, column=2,sticky="NS")
 
     label = tk.Label(root, text="Badu Rate:").grid(padx = 5,pady = 5, row=3, column=0, sticky='NW')
     
