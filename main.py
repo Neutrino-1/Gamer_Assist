@@ -77,7 +77,7 @@ class InteractiveScreenshot(tk.Frame):
 
     def _createCanvas(self):
         self.canvas = tk.Canvas(self.parent, width = root.winfo_screenwidth(), height = root.winfo_screenheight(),
-                                bg = None)
+                                bg = None,cursor="crosshair")
         #self.canvas.grid(row=0, column=0)
         self.mainScreenButton = tk.Button(self.parent, text="Exit", width=10, command=self.exitScreenshot,bg='#ff0000',fg='black')
         self.screenshotButton = tk.Button(self.parent, text="Grab", width=10, command=self.screenshotEditor,bg='#00ff00',fg='black')
@@ -193,8 +193,17 @@ if __name__ == "__main__":
 
     imageCanvas = tk.Canvas(root,height=100,width = 50,bg = "White")
     imageCanvas.grid(padx = 5,row=0,rowspan=3,columnspan=2, column=0,sticky="EW")
+
     previewScreenshot = PhotoImage(file='images/Health.png')
-    imageCanvas.create_image(50,0, image=previewScreenshot,anchor='nw')
+    imgHeight = previewScreenshot.height()
+    imgWidth = previewScreenshot.width()
+    imageCanvas.update()
+    canvHeight = imageCanvas.winfo_height()
+    canvWidth = imageCanvas.winfo_width()
+    
+    scaling = 0    
+    
+    imageCanvas.create_image(0,0, image=previewScreenshot,anchor='nw')
 
     #print("Hey",pytesseract.image_to_string(PIL.Image.open('images/Health.png')))
 
