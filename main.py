@@ -4,14 +4,14 @@ from tkinter import PhotoImage
 import cv2
 from PIL import ImageGrab
 import PIL.Image, PIL.ImageTk
+from PIL import Image
 import numpy as np
 import math
 import serial
 import serial.tools.list_ports
 import time
 import pyautogui
-
-cvt_image = None
+import pytesseract
 
 class InteractiveScreenshot(tk.Frame):
     def __init__( self, parent):
@@ -43,12 +43,12 @@ class InteractiveScreenshot(tk.Frame):
         self.ScreenshotEditorWm = tk.Toplevel() 
 
         # Toplevel widget 
-        self.ScreenshotEditorWm.title("New Window") 
+        self.ScreenshotEditorWm.title("Editor") 
   
         # sets the geometry of toplevel 
         self.ScreenshotEditorWm.geometry("200x200") 
         screenshotPreviewCanv= tk.Canvas(self.ScreenshotEditorWm,height=150,width = 150,bg = "White")
-        screenshotPreviewCanv.grid(padx = 5,row=0,rowspan=3,columnspan=2, column=0,sticky="EW")
+        screenshotPreviewCanv.grid(padx = 5,row=0,rowspan=2,columnspan=2, column=0,sticky="EW")
         previewScreenshotImg = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(cvt_image))
         screenshotPreviewCanv.create_image(0,0, image=previewScreenshotImg,anchor='nw')
         self.ScreenshotEditorWm.deiconify() 
@@ -64,13 +64,13 @@ class InteractiveScreenshot(tk.Frame):
 	    #converting the image to numpy array to use the image with cv2 library
         screen = np.array(ImageGrab.grab(bbox = (self.rectx0-0.5,self.recty0+26,self.rectx1,self.recty1+26.5)))
         cvt_image = cv2.cvtColor(screen,cv2.COLOR_BGR2RGB)
-	    #using open cv2 to gray out the image grab
         gray_image = cv2.cvtColor(cvt_image, cv2.COLOR_BGR2GRAY)
-
         #blur the gray image to remove noise and to averaging the color
-        cvt_image = cv2.bilateralFilter(gray_image,15,65,65)
-    	#displaying the edge and thresh image
-        #cv2.imshow('Original',cvt_image)
+        blurred = cv2.bilateralFilter(gray_image,15,100,100)
+        #converting the blurred image to pure black(0) and white(255) binary image
+        thresh = cv2.threshold(blurred, 100,200, cv2.THRESH_BINARY)[1]
+        print(pytesseract.image_to_string(thresh))
+        cv2.imshow('Original',thresh)
 
     def exitScreenshot(self):
         self.parent.destroy()
@@ -158,7 +158,12 @@ def newScreenArea():
     screenshotWindow = tk.Toplevel(root)
     app = InteractiveScreenshot(screenshotWindow)
 
+
+
 if __name__ == "__main__":
+    
+    pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract'
+    cvt_image = None
 
     baduRate = ["9600","115200","19200"]
 
@@ -190,6 +195,9 @@ if __name__ == "__main__":
     imageCanvas.grid(padx = 5,row=0,rowspan=3,columnspan=2, column=0,sticky="EW")
     previewScreenshot = PhotoImage(file='images/Health.png')
     imageCanvas.create_image(50,0, image=previewScreenshot,anchor='nw')
+
+    #print("Hey",pytesseract.image_to_string(PIL.Image.open('images/Health.png')))
+
 
     tk.Button(root, text="Start", width=10, command=None).grid(padx = 5,pady = 5,row=0, column=2)
     tk.Button(root, text="Stop", width=10, command=None).grid(padx = 5,pady = 5, row=1, column=2)
