@@ -37,44 +37,86 @@ class InteractiveScreenshot(tk.Frame):
 
     def screenshotEditor(self): 
         global previewScreenshotImg
+
         self.parent.withdraw() 
         self.parent.destroy()
         self.selectionDone()
         self.ScreenshotEditorWm = tk.Toplevel() 
+        self.ocr = tk.IntVar()
+        self.ocr.set("1")
+
+        self.threshControl = tk.IntVar()
+        self.maxValueControl = tk.IntVar()
+        self.blurControl = tk.IntVar()
+
+        self.threshControl.set("100")
+        self.maxValueControl.set("250")
+        self.blurControl.set("100")
 
         # Toplevel widget 
         self.ScreenshotEditorWm.title("Editor") 
   
         # sets the geometry of toplevel 
-        self.ScreenshotEditorWm.geometry("300x300") 
-        screenshotPreviewCanv= tk.Canvas(self.ScreenshotEditorWm,height=220,width = 220,bg = "black")
-        screenshotPreviewCanv.grid(padx = 5,row=0,rowspan=2,columnspan=2, column=0,sticky="EW")
+        self.ScreenshotEditorWm.geometry("350x250") 
+        self.screenshotPreviewCanv= tk.Canvas(self.ScreenshotEditorWm,height=220,width = 220,bg = "black")
+        self.screenshotPreviewCanv.grid(padx = 5,row=0,rowspan=4,columnspan=2, column=0,sticky="EW")
         
-
-        screenshotOriginal =  PIL.Image.fromarray(cvt_image)
-        imgWidth,imgHeight = screenshotOriginal.size
-        imageCanvas.update()
-        newHeight = imageCanvas.winfo_height()
-        if imgWidth <= imgHeight:
-            newWidth = int(imageCanvas.winfo_height() / imgHeight * imgWidth) 
-        else:
-            newWidth = imageCanvas.winfo_width()
-            newHeight = int((newWidth/imgWidth)*imgHeight)
-        resized = screenshotOriginal.resize((newWidth,newHeight))
-
-        previewScreenshotImg = PIL.ImageTk.PhotoImage(resized)
-        screenshotPreviewCanv.create_image(((220-newWidth)/2),((220-newHeight)/2), image=previewScreenshotImg,anchor='nw')
+        previewScreenshotImg = PIL.ImageTk.PhotoImage(self.EditorImg()[0])
+        self.screenshotPreviewCanv.create_image(((220-self.EditorImg()[1])/2),((220-self.EditorImg()[-1])/2), image=previewScreenshotImg,anchor='nw')
         self.ScreenshotEditorWm.deiconify() 
 
-        tresh_horizontal_slider_w = tk.Scale(self.ScreenshotEditorWm,from_=0,to=300,orient = tk.HORIZONTAL)
-        tresh_horizontal_slider_b = tk.Scale(self.ScreenshotEditorWm,from_=0,to=300,orient = tk.HORIZONTAL)
-        blur_horizontal_slider = tk.Scale(self.ScreenshotEditorWm,from_=0,to=300,orient = tk.HORIZONTAL)
+        tresh_horizontal_slider_w = tk.Scale(self.ScreenshotEditorWm,from_=0,to=300,orient = tk.HORIZONTAL,variable=self.threshControl,)
+        tresh_horizontal_slider_b = tk.Scale(self.ScreenshotEditorWm,from_=0,to=300,orient = tk.HORIZONTAL, variable=self.maxValueControl,)
+        blur_horizontal_slider = tk.Scale(self.ScreenshotEditorWm,from_=0,to=300,orient = tk.HORIZONTAL, variable=self.blurControl,)
+        
         tresh_horizontal_slider_w.grid(padx = 5,row=0,column=3,sticky="EW")
         tresh_horizontal_slider_b.grid(padx = 5,row=1,column=3,sticky="EW")
         blur_horizontal_slider.grid(padx = 5,row=2,column=3,sticky="EW")
 
+        tk.Radiobutton(self.ScreenshotEditorWm,text="Health Value",variable=self.ocr,value=1,command=self.radioBUttonSelection).grid(padx = 5,row=4,column=0,sticky="EW")
+        tk.Radiobutton(self.ScreenshotEditorWm,text="Health Bar",variable=self.ocr,value=2,command=self.radioBUttonSelection).grid(padx = 5,row=4,column=1,sticky="EW")
+
+    def EditorImg(self):
+        screenshotOriginal =  PIL.Image.fromarray(gray_image)
+        imgWidth,imgHeight = screenshotOriginal.size
+        self.screenshotPreviewCanv.update()
+        newHeight = self.screenshotPreviewCanv.winfo_height()
+        if imgWidth <= imgHeight:
+            newWidth = int(self.screenshotPreviewCanv.winfo_height() / imgHeight * imgWidth) 
+        else:
+            newWidth = self.screenshotPreviewCanv.winfo_width()
+            newHeight = int((newWidth/imgWidth)*imgHeight)
+        resized = screenshotOriginal.resize((newWidth,newHeight))
+        return (resized,newWidth,newHeight)
+
+    def imageProcessingPreview(self):
+        previewScreenshotImg = PIL.ImageTk.PhotoImage(self.EditorImg()[0])
+        self.canvas.itemconfig(self.image_on_canvas, image = previewScreenshotImg)
+
+    def adjustW(self):
+        #blur the gray image to remove noise and to averaging the color
+        blurred = cv2.bilateralFilter(gray_image,15,100,100)
+        #converting the blurred image to pure black(0) and white(255) binary image
+        thresh = cv2.threshold(blurred, 100,200, cv2.THRESH_BINARY)[1]
+        #cv2.imshow('Original',thresh)
+        self.imageProcessingPreview()
+
+    def adjustB(self):
+        pass
+
+    def adjustBlur(self):
+        pass
+
+    def radioBUttonSelection(self):
+        if self.ocr.get() == 1:
+            # print(pytesseract.image_to_string(thresh))
+            print("OCR")
+        else:
+            print("Health Bar")
+       
+
     def selectionDone(self):
-        global cvt_image
+        global gray_image
         # print('started at x = {1} y = {2} ended at x1 = {3} y1 = {4} '. format(self.rectid, self.rectx0, self.recty0, self.rectx1,
         #              self.recty1))
         # '''Getting the Image from the screen and find the edge of the health bar'''
@@ -84,12 +126,7 @@ class InteractiveScreenshot(tk.Frame):
         screen = np.array(ImageGrab.grab(bbox = (self.rectx0-0.5,self.recty0+26,self.rectx1,self.recty1+26.5)))
         cvt_image = cv2.cvtColor(screen,cv2.COLOR_BGR2RGB)
         gray_image = cv2.cvtColor(cvt_image, cv2.COLOR_BGR2GRAY)
-        #blur the gray image to remove noise and to averaging the color
-        blurred = cv2.bilateralFilter(gray_image,15,100,100)
-        #converting the blurred image to pure black(0) and white(255) binary image
-        thresh = cv2.threshold(blurred, 100,200, cv2.THRESH_BINARY)[1]
-        print(pytesseract.image_to_string(thresh))
-        #cv2.imshow('Original',thresh)
+       
 
     def exitScreenshot(self):
         self.parent.destroy()
