@@ -56,56 +56,55 @@ class InteractiveScreenshot(tk.Frame):
         # Toplevel widget 
         self.ScreenshotEditorWm.title("Editor") 
   
-        # sets the geometry of toplevel 
-        self.ScreenshotEditorWm.geometry("350x250") 
+        self.ScreenshotEditorWm.resizable(False, False)
         self.screenshotPreviewCanv= tk.Canvas(self.ScreenshotEditorWm,height=220,width = 220,bg = "black")
         self.screenshotPreviewCanv.grid(padx = 5,row=0,rowspan=4,columnspan=2, column=0,sticky="EW")
+        previewScreenshotImg = PIL.ImageTk.PhotoImage(self.EditorImg())
+        self.image_label = tk.Label(self.screenshotPreviewCanv, image=previewScreenshotImg)
+        self.image_label.pack(anchor=tk.CENTER,fill = tk.BOTH)
         
-        previewScreenshotImg = PIL.ImageTk.PhotoImage(self.EditorImg()[0])
-        self.screenshotPreviewCanv.create_image(((220-self.EditorImg()[1])/2),((220-self.EditorImg()[-1])/2), image=previewScreenshotImg,anchor='nw')
         self.ScreenshotEditorWm.deiconify() 
 
-        tresh_horizontal_slider_w = tk.Scale(self.ScreenshotEditorWm,from_=0,to=300,orient = tk.HORIZONTAL,variable=self.threshControl,)
-        tresh_horizontal_slider_b = tk.Scale(self.ScreenshotEditorWm,from_=0,to=300,orient = tk.HORIZONTAL, variable=self.maxValueControl,)
-        blur_horizontal_slider = tk.Scale(self.ScreenshotEditorWm,from_=0,to=300,orient = tk.HORIZONTAL, variable=self.blurControl,)
+        tresh_horizontal_slider_w = tk.Scale(self.ScreenshotEditorWm,from_=0,to=300,orient = tk.HORIZONTAL,variable=self.threshControl,command=self.imageAdjustment)
+        tresh_horizontal_slider_b = tk.Scale(self.ScreenshotEditorWm,from_=0,to=300,orient = tk.HORIZONTAL, variable=self.maxValueControl,command=self.imageAdjustment)
+        blur_horizontal_slider = tk.Scale(self.ScreenshotEditorWm,from_=0,to=300,orient = tk.HORIZONTAL, variable=self.blurControl,command=self.imageAdjustment)
         
-        tresh_horizontal_slider_w.grid(padx = 5,row=0,column=3,sticky="EW")
+        tresh_horizontal_slider_w.grid(padx = 5,row=0,column=3,sticky="EW",)
         tresh_horizontal_slider_b.grid(padx = 5,row=1,column=3,sticky="EW")
         blur_horizontal_slider.grid(padx = 5,row=2,column=3,sticky="EW")
 
         tk.Radiobutton(self.ScreenshotEditorWm,text="Health Value",variable=self.ocr,value=1,command=self.radioBUttonSelection).grid(padx = 5,row=4,column=0,sticky="EW")
         tk.Radiobutton(self.ScreenshotEditorWm,text="Health Bar",variable=self.ocr,value=2,command=self.radioBUttonSelection).grid(padx = 5,row=4,column=1,sticky="EW")
 
+        tk.Button(self.ScreenshotEditorWm,text="Save",command=self.saveProcessedImg).grid(padx = 5,pady=5,row=4,column=3,sticky="EW")
+        
+    def saveProcessedImg(self):
+        global gray_image
+        processedImg =  PIL.Image.fromarray(gray_image)
+        processedImg.save("./images/processed/screenshot.png")
+
     def EditorImg(self):
         screenshotOriginal =  PIL.Image.fromarray(gray_image)
-        imgWidth,imgHeight = screenshotOriginal.size
-        self.screenshotPreviewCanv.update()
-        newHeight = self.screenshotPreviewCanv.winfo_height()
-        if imgWidth <= imgHeight:
-            newWidth = int(self.screenshotPreviewCanv.winfo_height() / imgHeight * imgWidth) 
-        else:
-            newWidth = self.screenshotPreviewCanv.winfo_width()
-            newHeight = int((newWidth/imgWidth)*imgHeight)
-        resized = screenshotOriginal.resize((newWidth,newHeight))
-        return (resized,newWidth,newHeight)
+        screenshotOriginal.thumbnail((220,220))
+        resized =  screenshotOriginal
+        return resized
 
     def imageProcessingPreview(self):
-        previewScreenshotImg = PIL.ImageTk.PhotoImage(self.EditorImg()[0])
-        self.canvas.itemconfig(self.image_on_canvas, image = previewScreenshotImg)
+        global previewScreenshotImg
+        previewScreenshotImg = PIL.ImageTk.PhotoImage(self.EditorImg())
+        self.image_label.config(image=previewScreenshotImg)        
 
-    def adjustW(self):
+    def imageAdjustment(self,var):
+        global gray_image
+        gray_image = cv2.cvtColor(np.array(PIL.Image.open("./images/original/screenshot.png")), cv2.COLOR_BGR2GRAY) 
         #blur the gray image to remove noise and to averaging the color
-        blurred = cv2.bilateralFilter(gray_image,15,100,100)
+        blurred = cv2.bilateralFilter(gray_image,15,self.blurControl.get(),self.blurControl.get())
         #converting the blurred image to pure black(0) and white(255) binary image
-        thresh = cv2.threshold(blurred, 100,200, cv2.THRESH_BINARY)[1]
+        thresh = cv2.threshold(blurred,self.threshControl.get(),self.maxValueControl.get(), cv2.THRESH_BINARY)[1]
         #cv2.imshow('Original',thresh)
+        gray_image = thresh
         self.imageProcessingPreview()
-
-    def adjustB(self):
-        pass
-
-    def adjustBlur(self):
-        pass
+        
 
     def radioBUttonSelection(self):
         if self.ocr.get() == 1:
@@ -123,7 +122,9 @@ class InteractiveScreenshot(tk.Frame):
         # print(pyautogui.position())
 	    #Grabbing the image from screen using pillow library
 	    #converting the image to numpy array to use the image with cv2 library
-        screen = np.array(ImageGrab.grab(bbox = (self.rectx0-0.5,self.recty0+26,self.rectx1,self.recty1+26.5)))
+        capture = ImageGrab.grab(bbox = (self.rectx0-0.5,self.recty0+26,self.rectx1,self.recty1+26.5))
+        screen = np.array(capture)
+        capture.save('./images/original/screenshot.png')
         cvt_image = cv2.cvtColor(screen,cv2.COLOR_BGR2RGB)
         gray_image = cv2.cvtColor(cvt_image, cv2.COLOR_BGR2GRAY)
        
@@ -156,10 +157,7 @@ class InteractiveScreenshot(tk.Frame):
 
         self.rectid = self.canvas.create_rectangle(
             self.rectx0, self.recty0, self.rectx0, self.recty0, fill="#4eccde")
-        # print('Rectangle {0} started at {1} {2} {3} {4} '.
-        #       format(self.rectid, self.rectx0, self.recty0, self.rectx0,
-        #              self.recty0))
-
+       
     def movingRect(self, event):
         #Translate mouse screen x1,y1 coordinates to canvas coordinates
         self.rectx1 = self.canvas.canvasx(event.x)
@@ -224,8 +222,9 @@ if __name__ == "__main__":
     baduRate = ["9600","115200","19200"]
 
     root = tk.Tk()
-    root.title("Gamer Assist");
-    root.geometry("322x290");
+    root.title("Gamer Assist")
+    root.geometry("322x290")
+    root.resizable(False, False)
 
     # Adding Menu system
     menu_system = tk.Menu(root)
@@ -271,14 +270,14 @@ if __name__ == "__main__":
     tk.Button(root, text="Stop", width=10, command=None).grid(padx = 5,pady = 5, row=1, column=2,sticky="NS")
     tk.Button(root, text="Edit Config", width=10, command=newScreenArea).grid(padx = 5,pady = 5, row=2, column=2,sticky="NS")
 
-    label = tk.Label(root, text="Badu Rate:").grid(padx = 5,pady = 5, row=3, column=0, sticky='NW')
+    tk.Label(root, text="Badu Rate:").grid(padx = 5,pady = 5, row=3, column=0, sticky='NW')
     
     badu = ttk.Combobox(root,value = baduRate)
     badu.grid(padx = 0,pady = 5, row=3, column=1)
     badu.current(0)
     badu.bind("<<ComboboxSelected>>",None)
     
-    label = tk.Label(root, text="Port:").grid(padx = 5,pady = 5, row=4, column=0, sticky='NW')
+    tk.Label(root, text="Port:").grid(padx = 5,pady = 5, row=4, column=0, sticky='NW')
 
     comList = serial_ports()
     if not comList:
