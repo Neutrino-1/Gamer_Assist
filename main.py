@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import PhotoImage
+from tkinter import messagebox
 import cv2
 from PIL import ImageGrab
 import PIL.Image
@@ -14,7 +15,7 @@ import time
 import pyautogui
 import pytesseract
 import threading
-from tkinter.filedialog import asksaveasfile
+from tkinter import filedialog
 from interactiveScreenshot import IS
 
 
@@ -28,7 +29,12 @@ def saveFile():
 
 
 def loadFile():
-    pass
+    global position
+    file_name = filedialog.askopenfilename(
+        initialdir="./data", title="Select file", filetypes=(("csv files", "*.csv"), ("all files", "*.*")))
+    with open(file_name, 'r') as file:
+        list_1 = file.read().split(',')
+        position = list(map(int, list_1))
 
 
 def Image_processing():
@@ -63,9 +69,12 @@ def newScreenArea():
 
 def runScreenRecording():
     global stopRecording
-    with open('./data/pos.csv', 'r') as file:
-        list_1 = file.read().split(',')
-        position = list(map(int, list_1))
+    global position
+
+    if not position:
+        tk.messagebox.showinfo(title="No file selected",
+                               message="No CSV file selected")
+
     while (True):
         if stopRecording:
             break
@@ -73,10 +82,6 @@ def runScreenRecording():
             bbox=(position[0], position[1], position[2], position[3])))
         process = np.array(capture)
         cvt_image = cv2.cvtColor(process, cv2.COLOR_BGR2RGB)
-        # cv2.imshow('Original', cvt_image)
-        # if cv2.waitKey(25) & 0xFF == ord('q'):
-        #     cv2.destroyAllWindows()
-        #     break
         vidData = imageForMainWindow(capture)
         liveRecording = PIL.ImageTk.PhotoImage(vidData[0])
         imageCanvas.create_image(
@@ -115,7 +120,7 @@ if __name__ == "__main__":
 
     pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract'
     cvt_image = None
-
+    position = []
     baduRate = ["9600", "115200", "19200"]
 
     root = tk.Tk()
@@ -132,7 +137,7 @@ if __name__ == "__main__":
     file_menu = tk.Menu(menu_system, tearoff=False)
     menu_system.add_cascade(label="File", menu=file_menu)
     file_menu.add_command(label="New", command=None)
-    file_menu.add_command(label="Open", command=None)
+    file_menu.add_command(label="Open", command=loadFile)
     file_menu.add_command(label="Save As", command=saveFile)
     file_menu.add_separator()
     file_menu.add_command(label="Exit", command=root.quit)
