@@ -3,6 +3,7 @@ from PIL import Image, ImageTk
 
 import multiprocessing
 
+
 class App:
     def __init__(self, master=tk.Tk()):
         self.master = master
@@ -44,6 +45,7 @@ class App:
     def mainloop(self):
         self.master.mainloop()
         print('mainloop closed...')
+
 
 if __name__ == '__main__':
     import time

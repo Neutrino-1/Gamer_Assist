@@ -14,7 +14,21 @@ import time
 import pyautogui
 import pytesseract
 import threading
+from tkinter.filedialog import asksaveasfile
 from interactiveScreenshot import IS
+
+
+def newFile():
+    pass
+
+
+def saveFile():
+    app.saveProcessedImg()
+    print("Save Complete")
+
+
+def loadFile():
+    pass
 
 
 def Image_processing():
@@ -40,6 +54,7 @@ def refreshPorts():
 
 
 def newScreenArea():
+    global app
     #pyautogui.getWindowsWithTitle("Gamer Assist")[0].minimize()
     root.wm_state('iconic')
     screenshotWindow = tk.Toplevel(root)
@@ -52,23 +67,48 @@ def runScreenRecording():
         list_1 = file.read().split(',')
         position = list(map(int, list_1))
     while (True):
-
-        capture = np.array(ImageGrab.grab(
-            bbox=(position[0], position[1], position[2], position[3])))
-        cvt_image = cv2.cvtColor(capture, cv2.COLOR_BGR2RGB)
-        cv2.imshow('Original', cvt_image)
-        if cv2.waitKey(25) & 0xFF == ord('q'):
-            cv2.destroyAllWindows()
+        if stopRecording:
             break
+        capture = (ImageGrab.grab(
+            bbox=(position[0], position[1], position[2], position[3])))
+        process = np.array(capture)
+        cvt_image = cv2.cvtColor(process, cv2.COLOR_BGR2RGB)
+        # cv2.imshow('Original', cvt_image)
+        # if cv2.waitKey(25) & 0xFF == ord('q'):
+        #     cv2.destroyAllWindows()
+        #     break
+        vidData = imageForMainWindow(capture)
+        liveRecording = PIL.ImageTk.PhotoImage(vidData[0])
+        imageCanvas.create_image(
+            ((220-vidData[1])/2), ((220-vidData[2])/2), image=liveRecording, anchor='nw')
 
 
 def startThread():
+    global stopRecording
+    stopRecording = False
     newThread = threading.Thread(target=runScreenRecording, daemon=True)
     newThread.start()
 
 
 def stopThread():
-    pass
+    global stopRecording
+    stopRecording = True
+
+
+def imageForMainWindow(img):
+    originalImg = img
+
+    imgWidth, imgHeight = originalImg.size
+    imageCanvas.update()
+    newHeight = imageCanvas.winfo_height()
+
+    if imgWidth <= imgHeight:
+        newWidth = int(imageCanvas.winfo_height() / imgHeight * imgWidth)
+    else:
+        newWidth = imageCanvas.winfo_width()
+        newHeight = int((newWidth/imgWidth)*imgHeight)
+
+    return (originalImg.resize((newWidth, newHeight)), newWidth, newHeight)
 
 
 if __name__ == "__main__":
@@ -82,7 +122,8 @@ if __name__ == "__main__":
     root.title("Gamer Assist")
     root.geometry("322x290")
     root.resizable(False, False)
-
+    processedVar = tk.IntVar()
+    processedVar.set("1")
     # Adding Menu system
     menu_system = tk.Menu(root)
     root.config(menu=menu_system)
@@ -90,9 +131,9 @@ if __name__ == "__main__":
     # creating file menu item
     file_menu = tk.Menu(menu_system, tearoff=False)
     menu_system.add_cascade(label="File", menu=file_menu)
-    file_menu.add_command(label="New Config", command=None)
-    file_menu.add_command(label="Open Config", command=None)
-    file_menu.add_command(label="Save Config", command=None)
+    file_menu.add_command(label="New", command=None)
+    file_menu.add_command(label="Open", command=None)
+    file_menu.add_command(label="Save As", command=saveFile)
     file_menu.add_separator()
     file_menu.add_command(label="Exit", command=root.quit)
 
@@ -106,23 +147,12 @@ if __name__ == "__main__":
     imageCanvas.grid(padx=5, row=0, rowspan=3,
                      columnspan=2, column=0, sticky="W")
 
-    originalImg = Image.open('images/Health.png')
-
-    imgWidth, imgHeight = originalImg.size
-    imageCanvas.update()
-    newHeight = imageCanvas.winfo_height()
-
-    if imgWidth <= imgHeight:
-        newWidth = int(imageCanvas.winfo_height() / imgHeight * imgWidth)
-    else:
-        newWidth = imageCanvas.winfo_width()
-        newHeight = int((newWidth/imgWidth)*imgHeight)
-
-    resized = originalImg.resize((newWidth, newHeight))
-    previewScreenshot = PIL.ImageTk.PhotoImage(resized)
+    img = Image.open('images/Not_found.png')
+    imgData = imageForMainWindow(img)
+    previewScreenshot = PIL.ImageTk.PhotoImage(imgData[0])
 
     imageCanvas.create_image(
-        ((220-newWidth)/2), ((220-newHeight)/2), image=previewScreenshot, anchor='nw')
+        ((220-imgData[1])/2), ((220-imgData[2])/2), image=previewScreenshot, anchor='nw')
 
     startButton = tk.Button(root, text="Start", width=10, command=startThread)
     startButton.grid(padx=5, pady=5, row=0, column=2, sticky="NS")

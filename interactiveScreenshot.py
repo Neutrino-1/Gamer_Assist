@@ -1,4 +1,6 @@
+import os
 import tkinter as tk
+from tkinter import filedialog
 from tkinter import ttk
 from tkinter import PhotoImage
 import cv2
@@ -7,13 +9,8 @@ import PIL.Image
 import PIL.ImageTk
 from PIL import Image
 import numpy as np
-import math
-import serial
-import serial.tools.list_ports
-import time
 import pyautogui
 import pytesseract
-import threading
 
 
 class IS(tk.Frame):
@@ -95,11 +92,31 @@ class IS(tk.Frame):
     def saveProcessedImg(self):
         global gray_image
         processedImg = PIL.Image.fromarray(gray_image)
-        processedImg.save("./images/processed/screenshot.png")
-        with open('./data/pos.csv', 'w') as file:
-            file.write("{0},{1},{2},{3}".format(int(
-                self.rectx0-0.5), int(self.recty0+26), int(self.rectx1), int(self.recty1+26.5)))
-            file.close()
+        current_dir_path = os.path.dirname(
+            os.path.realpath(__file__))
+
+        dialog = filedialog.asksaveasfile(
+            initialdir=current_dir_path + "/data", mode='w', defaultextension=".csv", filetypes=(("csv files", "*.csv"), ("all files", "*.*")))
+        if dialog is None:  # asksaveasfile return `None` if dialog closed with "cancel".
+            return
+
+        dialog.write("{0},{1},{2},{3},{4},{5},{6}".format(int(
+            self.rectx0-0.5), int(self.recty0+26), int(self.rectx1), int(self.recty1+26.5), self.threshControl.get(),
+            self.maxValueControl.get(), self.blurControl.get()))
+        dialog.close()
+
+        filename = os.path.basename(dialog.name)[:-4]
+        processSaveImgDir = "./images/processed/" + filename+".png"
+        processedImg.save(processSaveImgDir)
+
+        originalSaveImgDir = "./images/original/temp.png"
+        renamePath = "./images/original/" + filename + ".png"
+        os.rename(originalSaveImgDir, renamePath)
+        # with open('./data/pos.csv', 'w') as file:
+        #     file.write("{0},{1},{2},{3},{4},{5},{6}".format(int(
+        #         self.rectx0-0.5), int(self.recty0+26), int(self.rectx1), int(self.recty1+26.5), self.threshControl.get(),
+        #         self.maxValueControl.get(), self.blurControl.get()))
+        #     file.close()
 
     def EditorImg(self):
         screenshotOriginal = PIL.Image.fromarray(gray_image)
@@ -135,16 +152,10 @@ class IS(tk.Frame):
 
     def selectionDone(self):
         global gray_image
-        # print('started at x = {1} y = {2} ended at x1 = {3} y1 = {4} '. format(self.rectid, self.rectx0, self.recty0, self.rectx1,
-        #              self.recty1))
-        # '''Getting the Image from the screen and find the edge of the health bar'''
-        # print(pyautogui.position())
-        # Grabbing the image from screen using pillow library
-        # converting the image to numpy array to use the image with cv2 library
         capture = ImageGrab.grab(
             bbox=(self.rectx0-0.5, self.recty0+26, self.rectx1, self.recty1+26.5))
         screen = np.array(capture)
-        capture.save('./images/original/screenshot.png')
+        capture.save('./images/original/temp.png')
         cvt_image = cv2.cvtColor(screen, cv2.COLOR_BGR2RGB)
         gray_image = cv2.cvtColor(cvt_image, cv2.COLOR_BGR2GRAY)
 
@@ -154,12 +165,12 @@ class IS(tk.Frame):
     def _createCanvas(self):
         self.canvas = tk.Canvas(self.parent, width=self.superparent.winfo_screenwidth(), height=self.superparent.winfo_screenheight(),
                                 bg=None, cursor="crosshair")
-        #self.canvas.grid(row=0, column=0)
+        # self.canvas.grid(row=0, column=0)
         self.mainScreenButton = tk.Button(
             self.parent, text="Exit", width=10, command=self.exitScreenshot, bg='#ff0000', fg='black')
         self.screenshotButton = tk.Button(
             self.parent, text="Grab", width=10, command=self.screenshotEditor, bg='#00ff00', fg='black')
-        #self.button.grid(padx = 50,pady=50,row=2, column=1)
+        # self.button.grid(padx = 50,pady=50,row=2, column=1)
         self.screenshotButton.grid(padx=5, row=0, column=1, sticky='E')
         self.mainScreenButton.grid(padx=5, row=0, column=0, sticky='W')
         self.canvas.grid(row=1,  columnspan=2, column=0)
