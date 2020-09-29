@@ -1,3 +1,4 @@
+import os
 import tkinter as tk
 from tkinter import ttk
 from tkinter import PhotoImage
@@ -20,7 +21,11 @@ from interactiveScreenshot import IS
 
 
 def newFile():
-    pass
+    global previewScreenshot
+    img = Image.open('images/Not_found.png')
+    imgData = imageForMainWindow(img)
+    previewScreenshot = PIL.ImageTk.PhotoImage(imgData[0])
+    imageCanvas.itemconfigure(canvImgId, image=previewScreenshot)
 
 
 def saveFile():
@@ -30,15 +35,33 @@ def saveFile():
 
 def loadFile():
     global position
+    global previewloadImg
+    global loadedFile
+
     file_name = filedialog.askopenfilename(
         initialdir="./data", title="Select file", filetypes=(("csv files", "*.csv"), ("all files", "*.*")))
     with open(file_name, 'r') as file:
         list_1 = file.read().split(',')
         position = list(map(int, list_1))
+    loadedFile = os.path.basename(file_name)[:-4] + ".png"
+    loadImg = Image.open('./images/original/'+loadedFile)
+    imgData = imageForMainWindow(loadImg)
+    previewloadImg = PIL.ImageTk.PhotoImage(imgData[0])
+
+    imageCanvas.itemconfigure(canvImgId, image=previewloadImg)
+    # imageCanvas.create_image(
+    #     ((220-imgData[1])/2), ((220-imgData[2])/2), image=previewloadImg, anchor='nw')
 
 
-def Image_processing():
-    pass
+def Image_processing(img):
+    gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # blur the gray image to remove noise and to averaging the color
+    blurred = cv2.bilateralFilter(
+        gray_image, 15, position[-1], position[-1])
+    # converting the blurred image to pure black(0) and white(255) binary image
+    thresh = cv2.threshold(
+        blurred, position[4], position[5], cv2.THRESH_BINARY)[1]
+    return PIL.Image.fromarray(thresh)
 
 
 def serial_ports():
@@ -61,7 +84,7 @@ def refreshPorts():
 
 def newScreenArea():
     global app
-    #pyautogui.getWindowsWithTitle("Gamer Assist")[0].minimize()
+    # pyautogui.getWindowsWithTitle("Gamer Assist")[0].minimize()
     root.wm_state('iconic')
     screenshotWindow = tk.Toplevel(root)
     app = IS(screenshotWindow, root)
@@ -70,6 +93,7 @@ def newScreenArea():
 def runScreenRecording():
     global stopRecording
     global position
+    global liveRecording
 
     if not position:
         tk.messagebox.showinfo(title="No file selected",
@@ -82,10 +106,10 @@ def runScreenRecording():
             bbox=(position[0], position[1], position[2], position[3])))
         process = np.array(capture)
         cvt_image = cv2.cvtColor(process, cv2.COLOR_BGR2RGB)
-        vidData = imageForMainWindow(capture)
+
+        vidData = imageForMainWindow(Image_processing(cvt_image))
         liveRecording = PIL.ImageTk.PhotoImage(vidData[0])
-        imageCanvas.create_image(
-            ((220-vidData[1])/2), ((220-vidData[2])/2), image=liveRecording, anchor='nw')
+        imageCanvas.itemconfig(canvImgId, image=liveRecording)
 
 
 def startThread():
@@ -97,7 +121,13 @@ def startThread():
 
 def stopThread():
     global stopRecording
+    global stopImg
     stopRecording = True
+
+    loadImg = Image.open('./images/original/'+loadedFile)
+    imgData = imageForMainWindow(loadImg)
+    stopImg = PIL.ImageTk.PhotoImage(imgData[0])
+    imageCanvas.itemconfigure(canvImgId, image=stopImg)
 
 
 def imageForMainWindow(img):
@@ -121,7 +151,8 @@ if __name__ == "__main__":
     pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract'
     cvt_image = None
     position = []
-    baduRate = ["9600", "115200", "19200"]
+    baduRate = [110, 300, 600, 1200, 2400, 4800, 9600,
+                14400, 19200, 38400, 57600, 115200, 128000, 256000]
 
     root = tk.Tk()
     root.title("Gamer Assist")
@@ -136,7 +167,7 @@ if __name__ == "__main__":
     # creating file menu item
     file_menu = tk.Menu(menu_system, tearoff=False)
     menu_system.add_cascade(label="File", menu=file_menu)
-    file_menu.add_command(label="New", command=None)
+    file_menu.add_command(label="New", command=newFile)
     file_menu.add_command(label="Open", command=loadFile)
     file_menu.add_command(label="Save As", command=saveFile)
     file_menu.add_separator()
@@ -156,7 +187,7 @@ if __name__ == "__main__":
     imgData = imageForMainWindow(img)
     previewScreenshot = PIL.ImageTk.PhotoImage(imgData[0])
 
-    imageCanvas.create_image(
+    canvImgId = imageCanvas.create_image(
         ((220-imgData[1])/2), ((220-imgData[2])/2), image=previewScreenshot, anchor='nw')
 
     startButton = tk.Button(root, text="Start", width=10, command=startThread)
@@ -171,7 +202,7 @@ if __name__ == "__main__":
 
     badu = ttk.Combobox(root, value=baduRate)
     badu.grid(padx=0, pady=5, row=3, column=1)
-    badu.current(0)
+    badu.current(6)
     badu.bind("<<ComboboxSelected>>", None)
 
     tk.Label(root, text="Port:").grid(

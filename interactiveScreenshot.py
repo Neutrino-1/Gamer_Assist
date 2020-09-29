@@ -132,7 +132,7 @@ class IS(tk.Frame):
     def imageAdjustment(self, var):
         global gray_image
         gray_image = cv2.cvtColor(np.array(PIL.Image.open(
-            "./images/original/screenshot.png")), cv2.COLOR_BGR2GRAY)
+            "./images/original/temp.png")), cv2.COLOR_BGR2GRAY)
         # blur the gray image to remove noise and to averaging the color
         blurred = cv2.bilateralFilter(
             gray_image, 15, self.blurControl.get(), self.blurControl.get())
