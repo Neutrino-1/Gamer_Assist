@@ -11,6 +11,7 @@ from PIL import Image
 import numpy as np
 import pyautogui
 import pytesseract
+import healthBarCalculator
 
 
 class IS(tk.Frame):
@@ -50,6 +51,8 @@ class IS(tk.Frame):
         self.threshControl = tk.IntVar()
         self.maxValueControl = tk.IntVar()
         self.blurControl = tk.IntVar()
+        self.edgeAdjust1 = tk.IntVar()
+        self.edgeAdjust2 = tk.IntVar()
 
         self.threshControl.set("100")
         self.maxValueControl.set("250")
@@ -58,7 +61,7 @@ class IS(tk.Frame):
         # Toplevel widget
         self.ScreenshotEditorWm.title("Editor")
 
-        self.ScreenshotEditorWm.resizable(False, False)
+        #self.ScreenshotEditorWm.resizable(False, False)
         self.screenshotPreviewCanv = tk.Canvas(
             self.ScreenshotEditorWm, height=220, width=220, bg="black")
         self.screenshotPreviewCanv.grid(
@@ -80,17 +83,17 @@ class IS(tk.Frame):
         tresh_horizontal_slider_w.grid(padx=5, row=0, column=3, sticky="EW",)
         tresh_horizontal_slider_b.grid(padx=5, row=1, column=3, sticky="EW")
         blur_horizontal_slider.grid(padx=5, row=2, column=3, sticky="EW")
-
         tk.Radiobutton(self.ScreenshotEditorWm, text="Health Value", variable=self.ocr, value=1,
-                       command=self.radioBUttonSelection).grid(padx=5, row=4, column=0, sticky="EW")
+                       command=self.radioBUttonSelection).grid(padx=5, row=5, column=0, sticky="EW")
         tk.Radiobutton(self.ScreenshotEditorWm, text="Health Bar", variable=self.ocr, value=2,
-                       command=self.radioBUttonSelection).grid(padx=5, row=4, column=1, sticky="EW")
+                       command=self.radioBUttonSelection).grid(padx=5, row=5, column=1, sticky="EW")
 
         tk.Button(self.ScreenshotEditorWm, text="Save", command=self.saveProcessedImg).grid(
-            padx=5, pady=5, row=4, column=3, sticky="EW")
+            padx=5, pady=5, row=5, column=3, sticky="EW")
 
     def saveProcessedImg(self):
         global gray_image
+        self.imageAdjustment(None)
         processedImg = PIL.Image.fromarray(gray_image)
         current_dir_path = os.path.dirname(
             os.path.realpath(__file__))
@@ -100,9 +103,9 @@ class IS(tk.Frame):
         if dialog is None:  # asksaveasfile return `None` if dialog closed with "cancel".
             return
 
-        dialog.write("{0},{1},{2},{3},{4},{5},{6}".format(int(
+        dialog.write("{0},{1},{2},{3},{4},{5},{6},{7}".format(int(
             self.rectx0-0.5), int(self.recty0+26), int(self.rectx1), int(self.recty1+26.5), self.threshControl.get(),
-            self.maxValueControl.get(), self.blurControl.get()))
+            self.maxValueControl.get(), self.blurControl.get(), self.ocr.get()),)
         dialog.close()
 
         filename = os.path.basename(dialog.name)[:-4]
@@ -140,6 +143,8 @@ class IS(tk.Frame):
         thresh = cv2.threshold(blurred, self.threshControl.get(
         ), self.maxValueControl.get(), cv2.THRESH_BINARY)[1]
         # cv2.imshow('Original',thresh)
+        if self.ocr.get() == 2:
+            thresh = cv2.Canny(thresh, 100, 150)
         gray_image = thresh
         self.imageProcessingPreview()
 
@@ -147,8 +152,11 @@ class IS(tk.Frame):
         if self.ocr.get() == 1:
             # print(pytesseract.image_to_string(thresh))
             print("OCR")
+            self.imageAdjustment(None)
+
         else:
             print("Health Bar")
+            self.imageAdjustment(None)
 
     def selectionDone(self):
         global gray_image

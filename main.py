@@ -53,6 +53,15 @@ def loadFile():
     #     ((220-imgData[1])/2), ((220-imgData[2])/2), image=previewloadImg, anchor='nw')
 
 
+def doOcr(img):
+    print(pytesseract.image_to_string(img))
+
+
+def healthBar(thresh):
+    calculate(thresh)
+    print("healthBar")
+
+
 def Image_processing(img):
     gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # blur the gray image to remove noise and to averaging the color
@@ -61,6 +70,11 @@ def Image_processing(img):
     # converting the blurred image to pure black(0) and white(255) binary image
     thresh = cv2.threshold(
         blurred, position[4], position[5], cv2.THRESH_BINARY)[1]
+    if position[6] == 1:
+        doOcr()
+    elif position[6] == 2:
+        thresh = cv2.Canny(thresh, 100, 150)
+        healthBar(thresh)
     return PIL.Image.fromarray(thresh)
 
 
