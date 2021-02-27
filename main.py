@@ -13,7 +13,6 @@ import math
 import serial
 import serial.tools.list_ports
 import time
-import pyautogui
 import pytesseract
 import threading
 from tkinter import filedialog
@@ -170,7 +169,7 @@ if __name__ == "__main__":
 
     root = tk.Tk()
     root.title("Gamer Assist")
-    root.geometry("322x290")
+    root.geometry("385x305")
     root.resizable(False, False)
     processedVar = tk.IntVar()
     processedVar.set("1")

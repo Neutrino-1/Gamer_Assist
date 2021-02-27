@@ -3,18 +3,21 @@ import tkinter as tk
 from tkinter import filedialog
 from tkinter import ttk
 from tkinter import PhotoImage
+from tkinter.constants import EW
 import cv2
 from PIL import ImageGrab
 import PIL.Image
 import PIL.ImageTk
 from PIL import Image
 import numpy as np
+from healthBarCalculator import calculate
 import pyautogui
 import pytesseract
-import healthBarCalculator
 
+offsety = 35
 
 class IS(tk.Frame):
+
     def __init__(self, parent, superparent):
         self.superparent = superparent
         parent.title("Interactive Screenshot")
@@ -38,8 +41,13 @@ class IS(tk.Frame):
         self.recty1 = 0
         self.rectid = None
 
+    '''
+        GUI/GUI function for the interactive screenshot starts here
+    '''
+
     def screenshotEditor(self):
         global previewScreenshotImg
+        global outputlable 
 
         self.parent.withdraw()
         self.parent.destroy()
@@ -59,6 +67,7 @@ class IS(tk.Frame):
         self.blurControl.set("100")
 
         # Toplevel widget
+        # Image editor to adjust the image to get data from the screen
         self.ScreenshotEditorWm.title("Editor")
 
         #self.ScreenshotEditorWm.resizable(False, False)
@@ -72,9 +81,8 @@ class IS(tk.Frame):
         self.image_label.pack(anchor=tk.CENTER, fill=tk.BOTH)
 
         self.ScreenshotEditorWm.deiconify()
-
-        tresh_horizontal_slider_w = tk.Scale(self.ScreenshotEditorWm, from_=0, to=300,
-                                             orient=tk.HORIZONTAL, variable=self.threshControl, command=self.imageAdjustment)
+        tresh_horizontal_slider_w = tk.Scale(self.ScreenshotEditorWm, from_=0, to=300,             #lambda: ChangeLabelText(MyLabel)
+                                             orient=tk.HORIZONTAL, variable=self.threshControl, command= self.imageAdjustment)
         tresh_horizontal_slider_b = tk.Scale(self.ScreenshotEditorWm, from_=0, to=300,
                                              orient=tk.HORIZONTAL, variable=self.maxValueControl, command=self.imageAdjustment)
         blur_horizontal_slider = tk.Scale(self.ScreenshotEditorWm, from_=0, to=300,
@@ -90,49 +98,113 @@ class IS(tk.Frame):
 
         tk.Button(self.ScreenshotEditorWm, text="Save", command=self.saveProcessedImg).grid(
             padx=5, pady=5, row=5, column=3, sticky="EW")
+        lable = tk.Label(self.ScreenshotEditorWm, text="Output")
+        lable.grid(padx=5,pady=5,row=6,column=0,columnspan=2,sticky=EW)
+        tk.Button(self.ScreenshotEditorWm, text="Show result", command= lambda: self.showResult(lable)).grid(
+            padx=5, pady=5, row=6, column=3, sticky="EW")
 
-    def saveProcessedImg(self):
+    def toggle_fullscreen(self, event=None):
+        self.state = not self.state  # Just toggling the boolean
+        self.tk.attributes("-fullscreen", self.state)
+        return "break"
+
+    def end_fullscreen(self, event=None):
+        self.state = False
+        self.tk.attributes("-fullscreen", False)
+        return "break"
+
+    # This function creates a semi transparent canvas and contains grab and exit button
+    def _createCanvas(self):
+        self.canvas = tk.Canvas(self.parent, width=self.superparent.winfo_screenwidth(), height=self.superparent.winfo_screenheight(),
+                                bg=None, cursor="crosshair")
+        # self.canvas.grid(row=0, column=0)
+        self.mainScreenButton = tk.Button(
+            self.parent, text="Exit", width=10, command=self.exitScreenshot, bg='#ff0000', fg='black')
+        self.screenshotButton = tk.Button(
+            self.parent, text="Grab", width=10, command=self.screenshotEditor, bg='#00ff00', fg='black')
+        # self.button.grid(padx = 50,pady=50,row=2, column=1)
+        self.screenshotButton.grid(padx=5, row=0, column=1, sticky='E')
+        self.mainScreenButton.grid(padx=5, row=0, column=0, sticky='W')
+        self.canvas.grid(row=1,  columnspan=2, column=0)
+
+    # binding button clicks 
+    def _createCanvasBinding(self):
+        self.canvas.bind("<Button-1>", self.startRect)
+        self.canvas.bind("<ButtonRelease-1>", self.stopRect)
+        self.canvas.bind("<B1-Motion>", self.movingRect)
+
+    # defines the starting point of the screenshot
+    def startRect(self, event):
+        # Translate mouse screen x0,y0 coordinates to canvas coordinates
+        self.rectx0 = self.canvas.canvasx(event.x)
+        self.recty0 = self.canvas.canvasy(event.y)
+        self.canvas.delete("all")
+        # Create rectangle
+        self.rectid = self.canvas.create_rectangle(
+            self.rectx0, self.recty0, self.rectx0, self.recty0, fill="#4eccde")
+        print(pyautogui.position())
+
+    # defines the moving point of the rectangle so we can have live preview of the rectangle size
+    def movingRect(self, event):
+        # Translate mouse screen x1,y1 coordinates to canvas coordinates
+        self.rectx1 = self.canvas.canvasx(event.x)
+        self.recty1 = self.canvas.canvasy(event.y)
+        # Modify rectangle x1, y1 coordinates
+        self.canvas.coords(self.rectid, self.rectx0, self.recty0,
+                           self.rectx1, self.recty1)
+
+    # End point of the moving rectangle
+    def stopRect(self, event):
+        # Translate mouse screen x1,y1 coordinates to canvas coordinates
+        self.rectx1 = self.canvas.canvasx(event.x)
+        self.recty1 = self.canvas.canvasy(event.y)
+        # Modify rectangle x1, y1 coordinates
+        self.canvas.coords(self.rectid, self.rectx0, self.recty0,
+                           self.rectx1, self.recty1)
+        # print('Rectangle ended')
+        print(pyautogui.position())
+        print(self.rectx0, self.recty0+offsety, self.rectx1, self.recty1+offsety)
+
+    #function executed on grab button
+    def selectionDone(self):
         global gray_image
-        self.imageAdjustment(None)
-        processedImg = PIL.Image.fromarray(gray_image)
-        current_dir_path = os.path.dirname(
-            os.path.realpath(__file__))
+        capture = ImageGrab.grab(
+            bbox=(self.rectx0, self.recty0+offsety, self.rectx1, self.recty1+offsety))
+        screen = np.array(capture)
+        capture.save('./images/original/temp.png')
+        cvt_image = cv2.cvtColor(screen, cv2.COLOR_BGR2RGB)
+        gray_image = cv2.cvtColor(cvt_image, cv2.COLOR_BGR2GRAY)
 
-        dialog = filedialog.asksaveasfile(
-            initialdir=current_dir_path + "/data", mode='w', defaultextension=".csv", filetypes=(("csv files", "*.csv"), ("all files", "*.*")))
-        if dialog is None:  # asksaveasfile return `None` if dialog closed with "cancel".
-            return
+    #function executed on exit button 
+    def exitScreenshot(self):
+        self.parent.destroy()
 
-        dialog.write("{0},{1},{2},{3},{4},{5},{6},{7}".format(int(
-            self.rectx0-0.5), int(self.recty0+26), int(self.rectx1), int(self.recty1+26.5), self.threshControl.get(),
-            self.maxValueControl.get(), self.blurControl.get(), self.ocr.get()),)
-        dialog.close()
+   # To get OCR or measure the health bar value
+    def radioBUttonSelection(self):
+        if self.ocr.get() == 1:
+            #print(pytesseract.image_to_string(gray_image))
+            print("OCR")
+            self.imageAdjustment(None)
 
-        filename = os.path.basename(dialog.name)[:-4]
-        processSaveImgDir = "./images/processed/" + filename+".png"
-        processedImg.save(processSaveImgDir)
+        else:
+            print("Health Bar")
+            self.imageAdjustment(None)
 
-        originalSaveImgDir = "./images/original/temp.png"
-        renamePath = "./images/original/" + filename + ".png"
-        os.rename(originalSaveImgDir, renamePath)
-        # with open('./data/pos.csv', 'w') as file:
-        #     file.write("{0},{1},{2},{3},{4},{5},{6}".format(int(
-        #         self.rectx0-0.5), int(self.recty0+26), int(self.rectx1), int(self.recty1+26.5), self.threshControl.get(),
-        #         self.maxValueControl.get(), self.blurControl.get()))
-        #     file.close()
-
+    #To fit the image inside the editor window
     def EditorImg(self):
         screenshotOriginal = PIL.Image.fromarray(gray_image)
         screenshotOriginal.thumbnail((220, 220))
         resized = screenshotOriginal
         return resized
-
+    
+    #Live preview of image processing
     def imageProcessingPreview(self):
         global previewScreenshotImg
         previewScreenshotImg = PIL.ImageTk.PhotoImage(self.EditorImg())
         self.image_label.config(image=previewScreenshotImg)
 
-    def imageAdjustment(self, var):
+    # Here the acutuall adjustment and processing of the image is done
+    def imageAdjustment(self,var):
         global gray_image
         gray_image = cv2.cvtColor(np.array(PIL.Image.open(
             "./images/original/temp.png")), cv2.COLOR_BGR2GRAY)
@@ -148,81 +220,44 @@ class IS(tk.Frame):
         gray_image = thresh
         self.imageProcessingPreview()
 
-    def radioBUttonSelection(self):
-        if self.ocr.get() == 1:
-            # print(pytesseract.image_to_string(thresh))
-            print("OCR")
-            self.imageAdjustment(None)
-
-        else:
-            print("Health Bar")
-            self.imageAdjustment(None)
-
-    def selectionDone(self):
+ # Saving the coordinates and image adjustment data to a csv file
+    def saveProcessedImg(self):
         global gray_image
-        capture = ImageGrab.grab(
-            bbox=(self.rectx0-0.5, self.recty0+26, self.rectx1, self.recty1+26.5))
-        screen = np.array(capture)
-        capture.save('./images/original/temp.png')
-        cvt_image = cv2.cvtColor(screen, cv2.COLOR_BGR2RGB)
-        gray_image = cv2.cvtColor(cvt_image, cv2.COLOR_BGR2GRAY)
+        self.imageAdjustment(None)
+        processedImg = PIL.Image.fromarray(gray_image)
+        current_dir_path = os.path.dirname(
+            os.path.realpath(__file__))
 
-    def exitScreenshot(self):
-        self.parent.destroy()
+        dialog = filedialog.asksaveasfile(
+            initialdir=current_dir_path + "/data", mode='w', defaultextension=".csv", filetypes=(("csv files", "*.csv"), ("all files", "*.*")))
+        if dialog is None:  # asksaveasfile return `None` if dialog closed with "cancel".
+            return
 
-    def _createCanvas(self):
-        self.canvas = tk.Canvas(self.parent, width=self.superparent.winfo_screenwidth(), height=self.superparent.winfo_screenheight(),
-                                bg=None, cursor="crosshair")
-        # self.canvas.grid(row=0, column=0)
-        self.mainScreenButton = tk.Button(
-            self.parent, text="Exit", width=10, command=self.exitScreenshot, bg='#ff0000', fg='black')
-        self.screenshotButton = tk.Button(
-            self.parent, text="Grab", width=10, command=self.screenshotEditor, bg='#00ff00', fg='black')
-        # self.button.grid(padx = 50,pady=50,row=2, column=1)
-        self.screenshotButton.grid(padx=5, row=0, column=1, sticky='E')
-        self.mainScreenButton.grid(padx=5, row=0, column=0, sticky='W')
-        self.canvas.grid(row=1,  columnspan=2, column=0)
+        dialog.write("{0},{1},{2},{3},{4},{5},{6},{7}".format(int(
+            self.rectx0), int(self.recty0+offsety), int(self.rectx1), int(self.recty1+offsety), self.threshControl.get(),
+            self.maxValueControl.get(), self.blurControl.get(), self.ocr.get()),)
+        dialog.close()
 
-    def _createCanvasBinding(self):
-        self.canvas.bind("<Button-1>", self.startRect)
-        self.canvas.bind("<ButtonRelease-1>", self.stopRect)
-        self.canvas.bind("<B1-Motion>", self.movingRect)
+        filename = os.path.basename(dialog.name)[:-4]
+        processSaveImgDir = "./images/processed/" + filename+".png"
+        processedImg.save(processSaveImgDir)
 
-    def startRect(self, event):
-        # Translate mouse screen x0,y0 coordinates to canvas coordinates
-        self.rectx0 = self.canvas.canvasx(event.x)
-        self.recty0 = self.canvas.canvasy(event.y)
-        self.canvas.delete("all")
-        # Create rectangle
-
-        self.rectid = self.canvas.create_rectangle(
-            self.rectx0, self.recty0, self.rectx0, self.recty0, fill="#4eccde")
-
-    def movingRect(self, event):
-        # Translate mouse screen x1,y1 coordinates to canvas coordinates
-        self.rectx1 = self.canvas.canvasx(event.x)
-        self.recty1 = self.canvas.canvasy(event.y)
-        # Modify rectangle x1, y1 coordinates
-        self.canvas.coords(self.rectid, self.rectx0, self.recty0,
-                           self.rectx1, self.recty1)
-        # print('Rectangle x1, y1 = ', self.rectx1, self.recty1)
-
-    def stopRect(self, event):
-        # Translate mouse screen x1,y1 coordinates to canvas coordinates
-        self.rectx1 = self.canvas.canvasx(event.x)
-        self.recty1 = self.canvas.canvasy(event.y)
-        # Modify rectangle x1, y1 coordinates
-        self.canvas.coords(self.rectid, self.rectx0, self.recty0,
-                           self.rectx1, self.recty1)
-        # print('Rectangle ended')
-        # print(pyautogui.position())
-
-    def toggle_fullscreen(self, event=None):
-        self.state = not self.state  # Just toggling the boolean
-        self.tk.attributes("-fullscreen", self.state)
-        return "break"
-
-    def end_fullscreen(self, event=None):
-        self.state = False
-        self.tk.attributes("-fullscreen", False)
-        return "break"
+        originalSaveImgDir = "./images/original/temp.png"
+        renamePath = "./images/original/" + filename + ".png"
+        os.rename(originalSaveImgDir, renamePath)
+        # with open('./data/pos.csv', 'w') as file:
+        #     file.write("{0},{1},{2},{3},{4},{5},{6}".format(int(
+        #         self.rectx0-0.5), int(self.recty0+26), int(self.rectx1), int(self.recty1+26.5), self.threshControl.get(),
+        #         self.maxValueControl.get(), self.blurControl.get()))
+        #     file.close()
+    
+    def showResult(self,lable):
+        result = ""
+        if self.ocr.get() == 1:
+            result = pytesseract.image_to_string(gray_image)
+            lable.config(text = result.strip())
+            print(result.strip())
+        else:
+            result = calculate(gray_image)
+            lable.config(text = result)
+            print(result)
