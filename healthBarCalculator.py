@@ -8,13 +8,11 @@ def calculate(edges):
     ''' Calculating the damage by measuring the difference is length 
             of the total health bar and health bar after damage
             (remaing_health)'''
-
+    remaing_health_percentage = 0
     # variable to keep track of previous remaing health
     global previous_health
     sum_of_white_pixel = 0
 
-    # Total health bar width in numpy array (a)
-    Total_health = len(edges)
     # Total health bar height in numpy array (b)
     Total_vertical_pixel = len(edges)
     Total_horizontal_pixel = edges.shape[1] 
@@ -55,5 +53,5 @@ def calculate(edges):
         # remaing health is calculate by taking the average of white pixels vertical (b colums)
         remaing_health = int(sum_of_white_pixel/Total_vertical_pixel)
         remaing_health_percentage = remaing_health/Total_horizontal_pixel * 100
-        print(remaing_health_percentage)
-        return(int(remaing_health_percentage))
+
+    return(int(remaing_health_percentage))

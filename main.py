@@ -9,7 +9,7 @@ import PIL.Image
 import PIL.ImageTk
 from PIL import Image
 import numpy as np
-import math
+from healthBarCalculator import calculate
 import serial
 import serial.tools.list_ports
 import time
@@ -18,6 +18,8 @@ import threading
 from tkinter import filedialog
 from interactiveScreenshot import IS
 
+UART_Port = None 
+previous_data = "0";
 
 def newFile():
     global previewScreenshot
@@ -26,11 +28,9 @@ def newFile():
     previewScreenshot = PIL.ImageTk.PhotoImage(imgData[0])
     imageCanvas.itemconfigure(canvImgId, image=previewScreenshot)
 
-
 def saveFile():
     app.saveProcessedImg()
     print("Save Complete")
-
 
 def loadFile():
     global position
@@ -48,18 +48,29 @@ def loadFile():
     previewloadImg = PIL.ImageTk.PhotoImage(imgData[0])
 
     imageCanvas.itemconfigure(canvImgId, image=previewloadImg)
-    # imageCanvas.create_image(
-    #     ((220-imgData[1])/2), ((220-imgData[2])/2), image=previewloadImg, anchor='nw')
 
+def setupSerial(selectedCom, selectedBadu):
+    global UART_Port
+    print(selectedCom,selectedBadu)
+    UART_Port = serial.Serial(selectedCom,selectedBadu)
+
+def sendSerial(data = "0"):
+    global previous_data
+    if previous_data == str(data):
+        return
+    else:
+        UART_Port.write(bytearray(data))
+        print(data," ",previous_data)
+        print("dataSent!")
+    previous_data = str(data)
 
 def doOcr(img):
-    print(pytesseract.image_to_string(img))
-
+    result = pytesseract.image_to_string(img).strip()
+    sendSerial(result)
 
 def healthBar(thresh):
-    calculate(thresh)
-    print("healthBar")
-
+    result = calculate(thresh)
+    sendSerial(result)
 
 def Image_processing(img):
     gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -69,9 +80,9 @@ def Image_processing(img):
     # converting the blurred image to pure black(0) and white(255) binary image
     thresh = cv2.threshold(
         blurred, position[4], position[5], cv2.THRESH_BINARY)[1]
-    if position[6] == 1:
-        doOcr()
-    elif position[6] == 2:
+    if position[7] == 1:
+        doOcr(thresh)
+    elif position[7] == 2:
         thresh = cv2.Canny(thresh, 100, 150)
         healthBar(thresh)
     return PIL.Image.fromarray(thresh)
@@ -83,7 +94,7 @@ def serial_ports():
     result = []
     for port, desc, hwid in sorted(ports):
         # print("{}: {} [{}]".format(port, desc, hwid))
-        result.append(desc)
+        result.append(port)
     return result
 
 
@@ -162,11 +173,9 @@ def imageForMainWindow(img):
 if __name__ == "__main__":
 
     pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract'
-    cvt_image = None
     position = []
     baduRate = [110, 300, 600, 1200, 2400, 4800, 9600,
                 14400, 19200, 38400, 57600, 115200, 128000, 256000]
-
     root = tk.Tk()
     root.title("Gamer Assist")
     root.geometry("385x305")
@@ -226,8 +235,7 @@ if __name__ == "__main__":
         comList.append("No device")
     com = ttk.Combobox(root, value=comList)
     com.grid(padx=5, pady=5, row=4, column=1)
-    com.current(0)
-    com.bind("<<ComboboxSelected>>", None)
+    com.bind("<<ComboboxSelected>>", lambda x : setupSerial(com.get(),badu.get()))
 
     tk.Button(root, text="Refresh Port", width=10, command=refreshPorts).grid(
         padx=5, pady=5, row=4, column=2)
