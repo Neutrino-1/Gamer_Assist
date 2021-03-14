@@ -19,7 +19,7 @@ from tkinter import filedialog
 from interactiveScreenshot import IS
 
 UART_Port = None 
-previous_data = "0";
+previous_data = "0"
 
 def newFile():
     global previewScreenshot
@@ -56,9 +56,7 @@ def setupSerial(selectedCom, selectedBadu):
 
 def sendSerial(data = "0"):
     global previous_data
-    if previous_data == str(data):
-        return
-    else:
+    if previous_data != str(data):
         UART_Port.write(bytearray(data))
         print(data," ",previous_data)
         print("dataSent!")
@@ -67,6 +65,7 @@ def sendSerial(data = "0"):
 def doOcr(img):
     result = pytesseract.image_to_string(img).strip()
     sendSerial(result)
+        
 
 def healthBar(thresh):
     result = calculate(thresh)
