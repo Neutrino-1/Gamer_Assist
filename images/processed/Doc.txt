@@ -1,0 +1,2 @@
+Default location to store processed health value images here, don't delete this 
+folder.

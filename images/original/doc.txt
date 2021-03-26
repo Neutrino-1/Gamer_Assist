@@ -1,0 +1,2 @@
+Original unprocessed health value images will be stored in this folder
+Don't delete this folder, this is the default location for the original images to be saved.
