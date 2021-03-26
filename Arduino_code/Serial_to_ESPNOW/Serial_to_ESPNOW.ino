@@ -19,6 +19,9 @@ void OnDataSent(uint8_t *mac_addr, uint8_t sendStatus) {
   Serial.print("Last Packet Send Status: ");
   if (sendStatus == 0){
     Serial.println("Delivery success");
+    digitalWrite(2,LOW);
+    delay(1000);
+    digitalWrite(2,HIGH);
   }
   else{
     Serial.println("Delivery fail");
@@ -47,13 +50,14 @@ void setup() {
  
 void loop() {
   if (Serial.available()) {
-    
+    digitalWrite(2,LOW);
     String data = Serial.readString();
     int healthValue = data.toInt();
     health_s.health = healthValue; 
-
+    delay(1000);
     // Send message via ESP-NOW
     esp_now_send(ringAddress, (uint8_t *) &health_s, sizeof(health_s));
     esp_now_send(stripAddress, (uint8_t *) &health_s, sizeof(health_s));
+    digitalWrite(2,HIGH);
   }
 }

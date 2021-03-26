@@ -1,8 +1,6 @@
 import os
 import tkinter as tk
 from tkinter import ttk
-from tkinter import PhotoImage
-from tkinter import messagebox
 import cv2
 from PIL import ImageGrab
 import PIL.Image
@@ -12,7 +10,6 @@ import numpy as np
 from healthBarCalculator import calculate
 import serial
 import serial.tools.list_ports
-import time
 import pytesseract
 import threading
 from tkinter import filedialog
@@ -56,11 +53,13 @@ def setupSerial(selectedCom, selectedBadu):
 
 def sendSerial(data = "0"):
     global previous_data
-    if previous_data != str(data):
-        UART_Port.write(bytearray(data))
-        print(data," ",previous_data)
-        print("dataSent!")
-    previous_data = str(data)
+    if previous_data == data or data == None:
+        return
+
+    UART_Port.write(bytearray(data,encoding='utf8'))
+    print(data," ",previous_data)
+    print("dataSent!")
+    previous_data = data
 
 def doOcr(img):
     result = pytesseract.image_to_string(img).strip()
@@ -179,6 +178,7 @@ if __name__ == "__main__":
     root.title("Gamer Assist")
     root.geometry("385x305")
     root.resizable(False, False)
+    root.attributes('-topmost', True)
     processedVar = tk.IntVar()
     processedVar.set("1")
     # Adding Menu system
